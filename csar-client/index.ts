@@ -73,9 +73,9 @@ export class CSARClient {
 
 
     async setupCall(message: Message) {
-        if (message.answer && this.peerConnection.signalingState !== "have-local-offer") {
+        console.debug("STate " + this.peerConnection.signalingState);
+        if (message.answer) {
             console.debug('pair call', message);
-            this.socket.removeListener('pair');
             const remoteDesc = new RTCSessionDescription(message.answer);
             await this.peerConnection.setRemoteDescription(remoteDesc);
         }
@@ -85,7 +85,6 @@ export class CSARClient {
         console.debug("r", message, this.isSender);
         if (message.offer && !this.isSender) {
             console.debug('pair recv', message);
-            this.socket.removeListener('pair');
             this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
             const answer = await this.peerConnection.createAnswer();
             await this.peerConnection.setLocalDescription(answer);
