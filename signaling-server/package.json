@@ -1,0 +1,14 @@
+{
+    "name": "@merzlabs/signaling-server",
+    "version": "0.0.1",
+    "description": "signaling server",
+    "repository": "https://github.com/Merzlabs/pecuniator-connect",
+    "scripts": {
+        "run": "forever -w server.js --watchDirectory public/",
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "^4.17.1",
+        "socket.io": "^2.3.0"
+    }
+}
