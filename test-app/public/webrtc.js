@@ -1,4 +1,4 @@
-let socket = io();
+let socket = io("https://connect.pecuniator.com");
 const configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
 let isSender = true;
 let peerConnection = new RTCPeerConnection(configuration);
