@@ -6,10 +6,12 @@ services:
     build: ./signaling-server
     restart: always
     environment:
-      - HTTP_PORT=3000
-      - VIRTUAL_HOST= connect.merzlabs.de
-      - LETSENCRYPT_HOST=connect.merzlabs.de
-      - LETSENCRYPT_EMAIL=info@merzlabs.de
+      - VIRTUAL_HOST= connect.pecuniator.com
+      - LETSENCRYPT_HOST=connect.pecuniator.com
+      - LETSENCRYPT_EMAIL=info@pecuniator.com
+    networks:
+      - proxy-tier
+      - default
 
   app:
     build: ./test-app
@@ -17,10 +19,9 @@ services:
     volumes:
       - app:/usr/local/apache2/htdocs/
     environment:
-      - HTTP_PORT=80
-      - VIRTUAL_HOST= connect.merzlabs.de
-      - LETSENCRYPT_HOST=connect.merzlabs.de
-      - LETSENCRYPT_EMAIL=info@merzlabs.de
+      - VIRTUAL_HOST= connect-test.pecuniator.com
+      - LETSENCRYPT_HOST=connect-test.pecuniator.com
+      - LETSENCRYPT_EMAIL=info@pecuniator.com
     networks:
       - proxy-tier
       - default
