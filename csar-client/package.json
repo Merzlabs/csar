@@ -1,6 +1,6 @@
 {
   "name": "@merzlabs/csar-client",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Client library for CSAR",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
