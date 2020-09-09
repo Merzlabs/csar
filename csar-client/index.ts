@@ -1,6 +1,6 @@
 
 import * as io from 'socket.io-client';
-import { fromEvent } from 'rxjs';
+import { fromEvent, Observable, Subscriber } from 'rxjs';
 
 export class CSARClient {
     public isSender = false;
@@ -10,15 +10,21 @@ export class CSARClient {
     private sendChannel = this.peerConnection.createDataChannel('sendDataChannel');
     private receiveChannel = this.peerConnection.createDataChannel('receiveChannel');
 
+    private messageObserver!: Subscriber<String>;
+    private messageObservable: Observable<String>;
+    private closeObserver!: Subscriber<String>;
+    private clsoeObservable: Observable<String>;
+
+
     constructor(url: string) {
         this.socket = io.connect(url);
         this.sendChannel.onopen = () => this.onSendChannelStateChange;
-        this.sendChannel.onclose = ()=> this.onSendChannelStateChange;
+        this.sendChannel.onclose = () => this.onSendChannelStateChange;
         this.peerConnection.ondatachannel = (event: any) => this.receiveChannelCallback(event);
 
         //Signaling
         this.socket.on('registered', (id: string) => {
-            console.log('joined', id);
+            console.debug('joined', id);
             this.setup();
         });
 
@@ -31,7 +37,7 @@ export class CSARClient {
         // Listen for remote ICE candidates and add them to the local RTCPeerConnection
         this.socket.on('pair', async (message: Message) => {
             if (message.iceCandidate && this.peerConnection.remoteDescription) {
-                console.log('pair ice', message);
+                console.debug('pair ice', message);
                 try {
                     await this.peerConnection.addIceCandidate(message.iceCandidate);
                 } catch (e) {
@@ -42,11 +48,19 @@ export class CSARClient {
 
         // Listen for connectionstatechange on the local RTCPeerConnection
         this.peerConnection.addEventListener('connectionstatechange', event => {
-            console.log(event);
+            console.debug(event);
             if (this.peerConnection.connectionState === 'connected') {
                 // Peers connected!
-                console.log(this.peerConnection);
+                console.debug(this.peerConnection);
             }
+        });
+
+        // Observables
+        this.messageObservable = new Observable(subscriber => {
+            this.messageObserver = subscriber;
+        });
+        this.clsoeObservable = new Observable(subscriber => {
+            this.closeObserver = subscriber;
         });
     }
 
@@ -96,21 +110,22 @@ export class CSARClient {
 
     sendData(data: string) {
         this.sendChannel.send(data);
-        console.log('Sent Data: ' + data);
+        console.debug('Sent Data: ' + data);
     }
 
     closeDataChannels() {
-        console.log('Closing data channels');
+        console.debug('Closing data channels');
         this.sendChannel.close();
-        console.log('Closed data channel with label: ' + this.sendChannel.label);
+        console.debug('Closed data channel with label: ' + this.sendChannel.label);
         this.receiveChannel.close();
-        console.log('Closed data channel with label: ' + this.receiveChannel.label);
+        console.debug('Closed data channel with label: ' + this.receiveChannel.label);
         this.peerConnection.close();
-        console.log('Closed peer connections');
+        console.debug('Closed peer connections');
+        this.closeObserver.complete();
     }
 
     receiveChannelCallback(event: RTCDataChannelEvent) {
-        console.log('Receive Channel Callback');
+        console.debug('Receive Channel Callback');
         this.receiveChannel = event.channel;
         this.receiveChannel.onmessage = (event: any) => this.onReceiveMessageCallback(event);
         this.receiveChannel.onopen = () => this.onReceiveChannelStateChange();
@@ -118,21 +133,22 @@ export class CSARClient {
     }
 
     private onReceiveMessageCallback(event: any) {
-        console.log('Received Message', event.data);
+        console.debug('Received Message', event.data);
+        this.messageObserver.next(event.data);
     }
 
     private onSendChannelStateChange() {
         const readyState = this.sendChannel.readyState;
-        console.log('Send channel state is: ' + readyState);
+        console.debug('Send channel state is: ' + readyState);
     }
 
     private onReceiveChannelStateChange() {
         const readyState = this.receiveChannel.readyState;
-        console.log(`Receive channel state is: ${readyState}`);
+        console.debug(`Receive channel state is: ${readyState}`);
     }
 
     onMessage() {
-        return fromEvent(this.receiveChannel, 'onmessage');
+        return this.messageObservable;
     }
 }
 
