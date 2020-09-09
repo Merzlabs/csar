@@ -14,11 +14,10 @@ export function register() {
     }
     client.register(id);
 
-    client.onMessage().subscribe((data) => console.debug('Subscription', data));
+    client.onMessage().subscribe((data) => console.log('Subscription', data));
 }
 
 export function send() {
-    console.debug('send');
     const dataField = document.getElementById('data') as HTMLInputElement;
     const data = dataField.value;
     client.sendData(data);
