@@ -16,8 +16,6 @@ services:
   app:
     build: ./test-app
     restart: always
-    volumes:
-      - app:/usr/local/apache2/htdocs/
     environment:
       - VIRTUAL_HOST= connect-test.pecuniator.com
       - LETSENCRYPT_HOST=connect-test.pecuniator.com
@@ -56,7 +54,6 @@ services:
       - proxy
 
 volumes:
-  app:
   certs:
   vhost.d:
   html:
