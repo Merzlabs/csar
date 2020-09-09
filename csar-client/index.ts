@@ -10,10 +10,12 @@ export class CSARClient {
     private sendChannel = this.peerConnection.createDataChannel('sendDataChannel');
     private receiveChannel = this.peerConnection.createDataChannel('receiveChannel');
 
-    private messageObserver!: Subscriber<String>;
-    private messageObservable: Observable<String>;
-    private closeObserver!: Subscriber<String>;
-    private clsoeObservable: Observable<String>;
+    private messageObserver!: Subscriber<string>;
+    private messageObservable: Observable<string>;
+    private closeObserver!: Subscriber<void>;
+    private closeObservable: Observable<void>;
+    private readyObserver!: Subscriber<void>;
+    private readyObservable: Observable<void>;
 
 
     constructor(url: string) {
@@ -59,8 +61,11 @@ export class CSARClient {
         this.messageObservable = new Observable(subscriber => {
             this.messageObserver = subscriber;
         });
-        this.clsoeObservable = new Observable(subscriber => {
+        this.closeObservable = new Observable(subscriber => {
             this.closeObserver = subscriber;
+        });
+        this.readyObservable = new Observable(subscriber => {
+            this.readyObserver = subscriber;
         });
     }
 
@@ -87,7 +92,6 @@ export class CSARClient {
 
 
     async setupCall(message: Message) {
-        console.debug("STate " + this.peerConnection.signalingState);
         if (message.answer) {
             console.debug('pair call', message);
             const remoteDesc = new RTCSessionDescription(message.answer);
@@ -130,6 +134,9 @@ export class CSARClient {
         this.receiveChannel.onmessage = (event: any) => this.onReceiveMessageCallback(event);
         this.receiveChannel.onopen = () => this.onReceiveChannelStateChange();
         this.receiveChannel.onclose = () => this.onReceiveChannelStateChange();
+
+        //Ready?
+        this.readyObserver.next();
     }
 
     private onReceiveMessageCallback(event: any) {
@@ -149,6 +156,14 @@ export class CSARClient {
 
     onMessage() {
         return this.messageObservable;
+    }
+
+    onClose() {
+        return this.closeObservable;
+    }
+
+    onReady() {
+        return this.readyObservable;
     }
 }
 
