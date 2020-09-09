@@ -3,7 +3,7 @@ version: '3'
 
 services:
   signaling-server:
-    build: ./signaling-server
+    build: ./csar-server
     restart: always
     environment:
       - VIRTUAL_HOST= connect.pecuniator.com
