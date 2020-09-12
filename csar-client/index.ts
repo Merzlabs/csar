@@ -1,14 +1,15 @@
 
 import * as io from 'socket.io-client';
-import { fromEvent, Observable, Subscriber } from 'rxjs';
+import { Observable, Subscriber } from 'rxjs';
 
-export class CSARClient {
+export class CSARSyncClient {
     public isSender = false;
     private socket: SocketIOClient.Socket;
     private configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
     private peerConnection = new RTCPeerConnection(this.configuration);
     private sendChannel = this.peerConnection.createDataChannel('sendDataChannel');
     private receiveChannel = this.peerConnection.createDataChannel('receiveChannel');
+    private logingEnabled: boolean = false;
 
     private messageObserver!: Subscriber<string>;
     private messageObservable: Observable<string>;
@@ -16,6 +17,8 @@ export class CSARClient {
     private closeObservable: Observable<void>;
     private readyObserver!: Subscriber<void>;
     private readyObservable: Observable<void>;
+    private channelObserver!: Subscriber<ChannelState>;
+    private channelObservable: Observable<ChannelState>;
 
 
     constructor(url: string) {
@@ -26,7 +29,7 @@ export class CSARClient {
 
         //Signaling
         this.socket.on('registered', (id: string) => {
-            console.debug('joined', id);
+            this.log('joined', id);
             this.setup();
         });
 
@@ -39,7 +42,7 @@ export class CSARClient {
         // Listen for remote ICE candidates and add them to the local RTCPeerConnection
         this.socket.on('pair', async (message: Message) => {
             if (message.iceCandidate && this.peerConnection.remoteDescription) {
-                console.debug('pair ice', message);
+                this.log('pair ice', message);
                 try {
                     await this.peerConnection.addIceCandidate(message.iceCandidate);
                 } catch (e) {
@@ -50,10 +53,10 @@ export class CSARClient {
 
         // Listen for connectionstatechange on the local RTCPeerConnection
         this.peerConnection.addEventListener('connectionstatechange', event => {
-            console.debug(event);
+            this.log(event);
             if (this.peerConnection.connectionState === 'connected') {
                 // Peers connected!
-                console.debug(this.peerConnection);
+                this.log(this.peerConnection);
             }
         });
 
@@ -66,6 +69,9 @@ export class CSARClient {
         });
         this.readyObservable = new Observable(subscriber => {
             this.readyObserver = subscriber;
+        });
+        this.channelObservable = new Observable(subscriber => {
+            this.channelObserver = subscriber;
         });
     }
 
@@ -93,16 +99,16 @@ export class CSARClient {
 
     async setupCall(message: Message) {
         if (message.answer) {
-            console.debug('pair call', message);
+            this.log('pair call', message);
             const remoteDesc = new RTCSessionDescription(message.answer);
             await this.peerConnection.setRemoteDescription(remoteDesc);
         }
     }
 
     async setupRecieve(message: Message) {
-        console.debug("r", message, this.isSender);
+        this.log("receive", message, this.isSender);
         if (message.offer && !this.isSender) {
-            console.debug('pair recv', message);
+            this.log('pair recv', message);
             this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
             const answer = await this.peerConnection.createAnswer();
             await this.peerConnection.setLocalDescription(answer);
@@ -110,26 +116,24 @@ export class CSARClient {
         }
     }
 
-
-
     sendData(data: string) {
         this.sendChannel.send(data);
-        console.debug('Sent Data: ' + data);
+        this.log('Sent Data: ' + data);
     }
 
     closeDataChannels() {
-        console.debug('Closing data channels');
+        this.log('Closing data channels');
         this.sendChannel.close();
-        console.debug('Closed data channel with label: ' + this.sendChannel.label);
+        this.log('Closed data channel with label: ' + this.sendChannel.label);
         this.receiveChannel.close();
-        console.debug('Closed data channel with label: ' + this.receiveChannel.label);
+        this.log('Closed data channel with label: ' + this.receiveChannel.label);
         this.peerConnection.close();
-        console.debug('Closed peer connections');
+        this.log('Closed peer connections');
         this.closeObserver.complete();
     }
 
     receiveChannelCallback(event: RTCDataChannelEvent) {
-        console.debug('Receive Channel Callback');
+        this.log('Receive Channel Callback');
         this.receiveChannel = event.channel;
         this.receiveChannel.onmessage = (event: any) => this.onReceiveMessageCallback(event);
         this.receiveChannel.onopen = () => this.onReceiveChannelStateChange();
@@ -139,21 +143,49 @@ export class CSARClient {
         this.readyObserver.next();
     }
 
+    //States TODO to observables?
+    get connectionState() {
+        return this.peerConnection?.connectionState;
+    }
+
+    get siganlingState() {
+        return this.peerConnection.signalingState;
+    }
+
+    get iceConnectionState() {
+        return this.peerConnection.iceConnectionState;
+    }
+
+    //Logging
+    enableLogging() {
+        this.logingEnabled = true;
+    }
+
+    disableLogging() {
+        this.logingEnabled = false;
+    }
+
+    private log(...args: any[]) {
+        if (this.logingEnabled) {
+            console.log(...args);
+        }
+    }
+
+    // Events
     private onReceiveMessageCallback(event: any) {
-        console.debug('Received Message', event.data);
         this.messageObserver.next(event.data);
     }
 
     private onSendChannelStateChange() {
         const readyState = this.sendChannel.readyState;
-        console.debug('Send channel state is: ' + readyState);
+        this.channelObserver.next({channel: 'send', readyState});
     }
 
     private onReceiveChannelStateChange() {
         const readyState = this.receiveChannel.readyState;
-        console.debug(`Receive channel state is: ${readyState}`);
+        this.channelObserver.next({channel: 'receive', readyState});
     }
-
+    
     onMessage() {
         return this.messageObservable;
     }
@@ -165,11 +197,20 @@ export class CSARClient {
     onReady() {
         return this.readyObservable;
     }
+
+    onChannelStateChange() {
+        return this.channelObservable;
+    }
 }
 
-export class Message {
+export interface Message {
     answer?: any;
     offer?: any;
     iceCandidate?: any;
+}
+
+export interface ChannelState {
+    channel: string;
+    readyState: string;
 }
 
