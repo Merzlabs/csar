@@ -2,6 +2,9 @@
 import * as io from 'socket.io-client';
 import { Observable, Subscriber } from 'rxjs';
 
+/**
+ * Implements WebRTC with the csar-server for signaling
+ */
 export class CSARSyncClient {
     public isSender = false;
     private socket: SocketIOClient.Socket;
