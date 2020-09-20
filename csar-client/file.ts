@@ -12,9 +12,8 @@ export class CSARFileClient {
     static async openDirectory() {
         const handle = await window.showDirectoryPicker();
         this.verifyPermission(handle);
-        const entries = await handle.getEntries();
         const files: File[] = [];
-        for await (const entry of entries) {
+        for await (const entry of handle.values()) {
           const file = await entry.getFile();
           files.push(file);
         }
