@@ -8,5 +8,5 @@ A new stack to build apps without a tradtional backend for improved privacy
 * csar-client - Client side Typescript library
   * CSARSyncClient - WebRTC client **(basics implemented)**
   * CSARFileClient [Native File System API](https://wicg.github.io/native-file-system/) **(basics implemented)**
-  * CSARStorageClient - IndexedDB Storage **(planned)**
+  * CSARStorageClient - IndexedDB Storage **(basics implemented)**
   * CSARWorker - [Web Background Synchronization](https://wicg.github.io/background-sync/spec/) **(planned)**
